@@ -177,14 +177,26 @@ local GRID_H = 20
 
 local function buildPixelBackground(parent)
     parent.ClipsDescendants = true
-    for i = 0, GRID_W * GRID_H - 1 do
-        local hex = PIXELS:sub(i * 6 + 1, i * 6 + 6)
-        make("Frame", {
-            Size = UDim2.new(1 / GRID_W, 1, 1 / GRID_H, 1),
-            Position = UDim2.new((i % GRID_W) / GRID_W, 0, math.floor(i / GRID_W) / GRID_H, 0),
-            BackgroundColor3 = Color3.fromRGB(tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16)),
+    for row = 0, GRID_H - 1 do
+        local keys = {}
+        for k = 0, 14 do
+            local r, g, b = 0, 0, 0
+            for n = 0, 1 do
+                local i = row * GRID_W + k * 2 + n
+                local hex = PIXELS:sub(i * 6 + 1, i * 6 + 6)
+                r = r + tonumber(hex:sub(1, 2), 16)
+                g = g + tonumber(hex:sub(3, 4), 16)
+                b = b + tonumber(hex:sub(5, 6), 16)
+            end
+            keys[#keys + 1] = ColorSequenceKeypoint.new(k / 14, Color3.fromRGB(math.floor(r / 2), math.floor(g / 2), math.floor(b / 2)))
+        end
+        local line = make("Frame", {
+            Size = UDim2.new(1, 0, 1 / GRID_H, 1),
+            Position = UDim2.new(0, 0, row / GRID_H, 0),
+            BackgroundColor3 = Color3.new(1, 1, 1),
             BorderSizePixel = 0,
         }, parent)
+        make("UIGradient", { Color = ColorSequence.new(keys) }, line)
     end
 end
 
@@ -1055,21 +1067,38 @@ local grip = make("Frame", {
 }, edgeBottom)
 round(grip, 2)
 
-local function place(target, x, y, scale)
+local function calibrate(target)
+    local pos = target.Position
+    local before = target.AbsolutePosition
+    target.Position = UDim2.new(pos.X.Scale, pos.X.Offset + 10, pos.Y.Scale, pos.Y.Offset + 10)
+    local after = target.AbsolutePosition
+    target.Position = pos
+    local k = (after.X - before.X) / 10
+    if k < 0.05 then
+        k = 1
+    end
+    return k
+end
+
+local function moveTo(target, startPos, startAbs, k, x, y)
     local screen = gui.AbsoluteSize
     local size = target.AbsoluteSize
     local cx = math.clamp(x, 0, math.max(screen.X - size.X, 0))
     local cy = math.clamp(y, 0, math.max(screen.Y - size.Y, 0))
-    local f = scale and scale.Scale or 1
-    return UDim2.fromOffset(cx / f, cy / f), cx, cy
+    target.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + (cx - startAbs.X) / k,
+        startPos.Y.Scale, startPos.Y.Offset + (cy - startAbs.Y) / k
+    )
 end
 
-local function keepInside(target, scale)
+local function setAbs(target, x, y)
+    local k = calibrate(target)
+    moveTo(target, target.Position, target.AbsolutePosition, k, x, y)
+end
+
+local function keepInside(target)
     local p = target.AbsolutePosition
-    local want, cx, cy = place(target, p.X, p.Y, scale)
-    if math.abs(cx - p.X) > 0.5 or math.abs(cy - p.Y) > 0.5 then
-        target.Position = want
-    end
+    setAbs(target, p.X, p.Y)
 end
 
 local function updateScale()
@@ -1079,23 +1108,31 @@ local function updateScale()
     end
 end
 
-local function makeDraggable(handle, target, onTap, scale)
+local function makeDraggable(handle, target, onTap)
     local dragging = false
     local moved = false
     local activeInput
-    local dragStart, startPos
-    local threshold = onTap and 6 or 2
+    local dragStart, startPos, startAbs, pending
+    local k = 1
+    local threshold = onTap and 6 or 3
 
     handle.InputBegan:Connect(function(input)
+        if dragging then
+            return
+        end
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             moved = false
+            pending = nil
             activeInput = input
             dragStart = input.Position
-            startPos = target.AbsolutePosition
+            startPos = target.Position
+            startAbs = target.AbsolutePosition
+            k = calibrate(target)
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
+                    pending = nil
                     if not moved and onTap then
                         onTap()
                     end
@@ -1108,23 +1145,30 @@ local function makeDraggable(handle, target, onTap, scale)
         if not dragging then
             return
         end
-        local isMouse = input.UserInputType == Enum.UserInputType.MouseMovement
-        local isTouch = input.UserInputType == Enum.UserInputType.Touch and input == activeInput
-        if isMouse or isTouch then
-            local delta = input.Position - dragStart
-            if not moved and delta.Magnitude > threshold then
-                moved = true
-            end
-            if moved then
-                target.Position = (place(target, startPos.X + delta.X, startPos.Y + delta.Y, scale))
-            end
+        if input.UserInputType == Enum.UserInputType.MouseMovement or (input.UserInputType == Enum.UserInputType.Touch and input == activeInput) then
+            pending = input.Position
+        end
+    end))
+
+    table.insert(connections, RunService.RenderStepped:Connect(function()
+        if not dragging or not pending then
+            return
+        end
+        local delta = pending - dragStart
+        pending = nil
+        if not moved and delta.Magnitude > threshold then
+            moved = true
+        end
+        if moved then
+            moveTo(target, startPos, startAbs, k, startAbs.X + delta.X, startAbs.Y + delta.Y)
         end
     end))
 end
 
 local function collapse()
     local p = main.AbsolutePosition
-    bubble.Position = (place(bubble, p.X, p.Y))
+    bubble.Position = UDim2.fromOffset(p.X, p.Y)
+    keepInside(bubble)
     main.Visible = false
     bubble.Visible = true
 end
@@ -1133,20 +1177,21 @@ local function expand()
     local p = bubble.AbsolutePosition
     main.Visible = true
     bubble.Visible = false
-    main.Position = (place(main, p.X, p.Y, scaler))
+    main.Position = UDim2.fromOffset(p.X, p.Y)
+    keepInside(main)
 end
 
 minBtn.MouseButton1Click:Connect(collapse)
-makeDraggable(header, main, nil, scaler)
-makeDraggable(bgImage, main, nil, scaler)
-makeDraggable(edgeLeft, main, nil, scaler)
-makeDraggable(edgeRight, main, nil, scaler)
-makeDraggable(edgeBottom, main, nil, scaler)
+makeDraggable(header, main)
+makeDraggable(bgImage, main)
+makeDraggable(edgeLeft, main)
+makeDraggable(edgeRight, main)
+makeDraggable(edgeBottom, main)
 makeDraggable(bubble, bubble, expand)
 
 table.insert(connections, gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
     updateScale()
-    keepInside(main, scaler)
+    keepInside(main)
     keepInside(bubble)
 end))
 
@@ -1154,7 +1199,7 @@ selectTab("hit")
 
 task.defer(function()
     updateScale()
-    keepInside(main, scaler)
+    keepInside(main)
 end)
 
 pcall(function()
