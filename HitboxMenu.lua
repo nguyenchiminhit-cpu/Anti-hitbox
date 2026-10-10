@@ -31,6 +31,7 @@ local state = {
 
 local ESP_RELOAD = 10
 local ESP_COLOR = Color3.fromRGB(90, 220, 140)
+local HEAD_PHYSICS = PhysicalProperties.new(0.01, 0.3, 0, 1, 1)
 
 local esp = {
     active = false,
@@ -134,30 +135,30 @@ end
 
 local espFolder = make("Folder", { Name = "ESP" }, gui)
 
-local BG = Color3.fromRGB(16, 16, 22)
-local PANEL = Color3.fromRGB(30, 30, 42)
+local BG = Color3.fromRGB(15, 15, 21)
+local PANEL = Color3.fromRGB(28, 28, 40)
 local ACCENT = Color3.fromRGB(124, 98, 255)
-local ACCENT_DARK = Color3.fromRGB(60, 46, 140)
+local ACCENT_DARK = Color3.fromRGB(56, 44, 130)
 local TEXT = Color3.fromRGB(240, 240, 250)
-local MUTED = Color3.fromRGB(140, 140, 165)
-local OFF = Color3.fromRGB(62, 62, 82)
+local MUTED = Color3.fromRGB(135, 135, 160)
+local OFF = Color3.fromRGB(60, 60, 80)
 local GREEN = Color3.fromRGB(80, 210, 130)
 
-local MAIN_W, HEAD_H = 196, 36
+local MAIN_W, HEAD_H = 188, 34
 
 local main = make("Frame", {
     Name = "Main",
     Size = UDim2.new(0, MAIN_W, 0, 0),
     AutomaticSize = Enum.AutomaticSize.Y,
     AnchorPoint = Vector2.new(0, 0.5),
-    Position = UDim2.new(0, 12, 0.5, 0),
+    Position = UDim2.new(0, 10, 0.5, 0),
     BackgroundColor3 = BG,
-    BackgroundTransparency = 0.04,
+    BackgroundTransparency = 0.03,
     BorderSizePixel = 0,
     ClipsDescendants = true,
 }, gui)
 round(main, 14)
-make("UIStroke", { Color = ACCENT, Thickness = 1.2, Transparency = 0.45 }, main)
+make("UIStroke", { Color = ACCENT, Thickness = 1.2, Transparency = 0.5 }, main)
 make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, main)
 
 local header = make("Frame", {
@@ -166,48 +167,53 @@ local header = make("Frame", {
     BorderSizePixel = 0,
     LayoutOrder = 0,
 }, main)
-make("UIGradient", {
-    Color = ColorSequence.new(ACCENT_DARK, PANEL),
-    Rotation = 0,
-}, header)
+make("UIGradient", { Color = ColorSequence.new(ACCENT_DARK, PANEL) }, header)
 
 local avatar = make("ImageLabel", {
-    Size = UDim2.new(0, 24, 0, 24),
-    Position = UDim2.new(0, 8, 0.5, -12),
+    Size = UDim2.new(0, 22, 0, 22),
+    Position = UDim2.new(0, 8, 0.5, -11),
     BackgroundColor3 = ACCENT,
     BorderSizePixel = 0,
     Image = imageSource,
     ScaleType = Enum.ScaleType.Crop,
 }, header)
-round(avatar, 12)
+round(avatar, 11)
 
 make("TextLabel", {
-    Size = UDim2.new(1, -80, 1, 0),
-    Position = UDim2.new(0, 38, 0, 0),
+    Size = UDim2.new(0, 60, 1, 0),
+    Position = UDim2.new(0, 36, 0, 0),
     BackgroundTransparency = 1,
     Text = "HITBOX",
     TextColor3 = TEXT,
-    TextSize = 14,
+    TextSize = 13,
     Font = Enum.Font.GothamBold,
     TextXAlignment = Enum.TextXAlignment.Left,
 }, header)
 
+local dot = make("Frame", {
+    Size = UDim2.new(0, 8, 0, 8),
+    Position = UDim2.new(0, 96, 0.5, -4),
+    BackgroundColor3 = OFF,
+    BorderSizePixel = 0,
+}, header)
+round(dot, 4)
+
 local minBtn = make("TextButton", {
-    Size = UDim2.new(0, 26, 0, 26),
-    Position = UDim2.new(1, -34, 0.5, -13),
+    Size = UDim2.new(0, 24, 0, 24),
+    Position = UDim2.new(1, -30, 0.5, -12),
     BackgroundColor3 = Color3.fromRGB(0, 0, 0),
     BackgroundTransparency = 0.6,
     Text = "–",
     TextColor3 = TEXT,
-    TextSize = 16,
+    TextSize = 15,
     Font = Enum.Font.GothamBold,
     AutoButtonColor = false,
 }, header)
-round(minBtn, 13)
+round(minBtn, 12)
 
 local bubble = make("ImageButton", {
     Name = "Bubble",
-    Size = UDim2.new(0, 46, 0, 46),
+    Size = UDim2.new(0, 44, 0, 44),
     AnchorPoint = Vector2.new(0, 0.5),
     Position = main.Position,
     BackgroundColor3 = ACCENT,
@@ -217,7 +223,7 @@ local bubble = make("ImageButton", {
     Visible = false,
     AutoButtonColor = false,
 }, gui)
-round(bubble, 23)
+round(bubble, 22)
 make("UIStroke", { Color = ACCENT, Thickness = 2.5 }, bubble)
 
 if imageSource == "" then
@@ -225,77 +231,163 @@ if imageSource == "" then
     buildPixelLogo(avatar)
 end
 
-local body = make("Frame", {
-    Size = UDim2.new(1, 0, 0, 0),
-    AutomaticSize = Enum.AutomaticSize.Y,
+local tabWrap = make("Frame", {
+    Size = UDim2.new(1, 0, 0, 40),
     BackgroundTransparency = 1,
     LayoutOrder = 1,
 }, main)
-make("UIListLayout", {
-    Padding = UDim.new(0, 6),
-    SortOrder = Enum.SortOrder.LayoutOrder,
-}, body)
+
+local seg = make("Frame", {
+    Size = UDim2.new(1, -16, 0, 28),
+    Position = UDim2.new(0, 8, 0, 8),
+    BackgroundColor3 = PANEL,
+    BorderSizePixel = 0,
+}, tabWrap)
+round(seg, 10)
+
+local pageHolder = make("Frame", {
+    Size = UDim2.new(1, 0, 0, 0),
+    AutomaticSize = Enum.AutomaticSize.Y,
+    BackgroundTransparency = 1,
+    LayoutOrder = 2,
+}, main)
+make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, pageHolder)
 make("UIPadding", {
-    PaddingTop = UDim.new(0, 8),
+    PaddingTop = UDim.new(0, 2),
     PaddingBottom = UDim.new(0, 8),
     PaddingLeft = UDim.new(0, 8),
     PaddingRight = UDim.new(0, 8),
-}, body)
+}, pageHolder)
 
-local order = 0
-local function nextOrder()
-    order = order + 1
-    return order
+local function makePage(order)
+    local page = make("Frame", {
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        LayoutOrder = order,
+        Visible = false,
+    }, pageHolder)
+    make("UIListLayout", {
+        Padding = UDim.new(0, 6),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+    }, page)
+    return page
 end
 
-local function panelRow(height, class)
+local hitPage = makePage(1)
+local espPage = makePage(2)
+
+local tabs = {}
+
+local function selectTab(name)
+    for key, tab in pairs(tabs) do
+        local active = key == name
+        tab.page.Visible = active
+        tween(tab.button, 0.15, {
+            BackgroundTransparency = active and 0 or 1,
+            TextColor3 = active and TEXT or MUTED,
+        })
+    end
+end
+
+local function makeTab(name, text, xScale, xOffset, page)
+    local button = make("TextButton", {
+        Size = UDim2.new(0.5, -4, 1, -6),
+        Position = UDim2.new(xScale, xOffset, 0, 3),
+        BackgroundColor3 = ACCENT,
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = MUTED,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
+        AutoButtonColor = false,
+    }, seg)
+    round(button, 8)
+    tabs[name] = { button = button, page = page }
+    button.MouseButton1Click:Connect(function()
+        selectTab(name)
+    end)
+end
+
+makeTab("hit", "Hitbox", 0, 3, hitPage)
+makeTab("esp", "ESP", 0.5, 1, espPage)
+
+local function panelRow(parent, height, class)
     local row = make(class or "Frame", {
         Size = UDim2.new(1, 0, 0, height),
         BackgroundColor3 = PANEL,
         BorderSizePixel = 0,
-        LayoutOrder = nextOrder(),
-    }, body)
+    }, parent)
     round(row, 10)
     return row
 end
 
-local toggleRow = panelRow(34, "TextButton")
-toggleRow.Text = ""
-toggleRow.AutoButtonColor = false
-
-make("TextLabel", {
-    Size = UDim2.new(1, -64, 1, 0),
-    Position = UDim2.new(0, 12, 0, 0),
-    BackgroundTransparency = 1,
-    Text = "Bật hitbox",
-    TextColor3 = TEXT,
-    TextSize = 13,
-    Font = Enum.Font.GothamMedium,
-    TextXAlignment = Enum.TextXAlignment.Left,
-}, toggleRow)
-
-local track = make("Frame", {
-    Size = UDim2.new(0, 42, 0, 22),
-    Position = UDim2.new(1, -52, 0.5, -11),
-    BackgroundColor3 = OFF,
-    BorderSizePixel = 0,
-}, toggleRow)
-round(track, 11)
-
-local knob = make("Frame", {
-    Size = UDim2.new(0, 16, 0, 16),
-    Position = UDim2.new(0, 3, 0.5, -8),
-    BackgroundColor3 = Color3.new(1, 1, 1),
-    BorderSizePixel = 0,
-}, track)
-round(knob, 8)
-
-local function makeSlider(title, min, max, start, decimals, onChange)
-    local holder = panelRow(46)
+local function makeSwitch(parent, text, order, onChange)
+    local row = panelRow(parent, 34, "TextButton")
+    row.Text = ""
+    row.AutoButtonColor = false
+    row.LayoutOrder = order
 
     make("TextLabel", {
-        Size = UDim2.new(0.6, -10, 0, 18),
-        Position = UDim2.new(0, 12, 0, 5),
+        Size = UDim2.new(1, -64, 1, 0),
+        Position = UDim2.new(0, 12, 0, 0),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextColor3 = TEXT,
+        TextSize = 13,
+        Font = Enum.Font.GothamMedium,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, row)
+
+    local track = make("Frame", {
+        Size = UDim2.new(0, 42, 0, 22),
+        Position = UDim2.new(1, -52, 0.5, -11),
+        BackgroundColor3 = OFF,
+        BorderSizePixel = 0,
+    }, row)
+    round(track, 11)
+
+    local knob = make("Frame", {
+        Size = UDim2.new(0, 16, 0, 16),
+        Position = UDim2.new(0, 3, 0.5, -8),
+        BackgroundColor3 = Color3.new(1, 1, 1),
+        BorderSizePixel = 0,
+    }, track)
+    round(knob, 8)
+
+    local value = false
+    row.MouseButton1Click:Connect(function()
+        value = not value
+        tween(track, 0.2, { BackgroundColor3 = value and ACCENT or OFF })
+        tween(knob, 0.2, { Position = value and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8) })
+        onChange(value)
+    end)
+end
+
+local function makeSlider(parent, order, title, min, max, start, decimals, onChange, key)
+    local holder = panelRow(parent, 42)
+    holder.LayoutOrder = order
+
+    local labelX = 12
+    if key then
+        labelX = 34
+        local check = make("TextButton", {
+            Size = UDim2.new(0, 14, 0, 14),
+            Position = UDim2.new(0, 12, 0, 6),
+            BackgroundColor3 = state[key] and ACCENT or OFF,
+            Text = "",
+            AutoButtonColor = false,
+        }, holder)
+        round(check, 7)
+        check.MouseButton1Click:Connect(function()
+            state[key] = not state[key]
+            tween(check, 0.15, { BackgroundColor3 = state[key] and ACCENT or OFF })
+        end)
+    end
+
+    make("TextLabel", {
+        Size = UDim2.new(0.6, -labelX + 12, 0, 18),
+        Position = UDim2.new(0, labelX, 0, 4),
         BackgroundTransparency = 1,
         Text = title,
         TextColor3 = TEXT,
@@ -306,7 +398,7 @@ local function makeSlider(title, min, max, start, decimals, onChange)
 
     local valueLabel = make("TextLabel", {
         Size = UDim2.new(0.4, -12, 0, 18),
-        Position = UDim2.new(0.6, 0, 0, 5),
+        Position = UDim2.new(0.6, 0, 0, 4),
         BackgroundTransparency = 1,
         Text = tostring(start),
         TextColor3 = ACCENT,
@@ -317,8 +409,8 @@ local function makeSlider(title, min, max, start, decimals, onChange)
 
     local bar = make("Frame", {
         Size = UDim2.new(1, -28, 0, 6),
-        Position = UDim2.new(0, 14, 0, 31),
-        BackgroundColor3 = Color3.fromRGB(50, 50, 68),
+        Position = UDim2.new(0, 14, 0, 30),
+        BackgroundColor3 = Color3.fromRGB(48, 48, 66),
         BorderSizePixel = 0,
     }, holder)
     round(bar, 3)
@@ -339,7 +431,8 @@ local function makeSlider(title, min, max, start, decimals, onChange)
     round(thumb, 8)
 
     local hit = make("TextButton", {
-        Size = UDim2.new(1, 0, 1, 0),
+        Size = UDim2.new(1, 0, 1, -22),
+        Position = UDim2.new(0, 0, 0, 22),
         BackgroundTransparency = 1,
         Text = "",
         ZIndex = 2,
@@ -376,46 +469,96 @@ local function makeSlider(title, min, max, start, decimals, onChange)
     end))
 end
 
-local chipRow = make("Frame", {
-    Size = UDim2.new(1, 0, 0, 30),
+local status = make("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 14),
     BackgroundTransparency = 1,
-    LayoutOrder = nextOrder(),
-}, body)
+    Text = "Đang tắt",
+    TextColor3 = MUTED,
+    TextSize = 11,
+    Font = Enum.Font.Gotham,
+    LayoutOrder = 7,
+}, hitPage)
 
-local function makeChip(text, xScale, xOffset, key)
-    local chip = make("TextButton", {
-        Size = UDim2.new(0.5, -3, 1, 0),
-        Position = UDim2.new(xScale, xOffset, 0, 0),
-        BackgroundColor3 = state[key] and ACCENT or PANEL,
-        Text = text,
-        TextColor3 = TEXT,
-        TextSize = 12,
-        Font = Enum.Font.GothamBold,
-        AutoButtonColor = false,
-    }, chipRow)
-    round(chip, 10)
-    chip.MouseButton1Click:Connect(function()
-        state[key] = not state[key]
-        tween(chip, 0.15, { BackgroundColor3 = state[key] and ACCENT or PANEL })
-    end)
+local function restore(part)
+    local data = originals[part]
+    if data and part.Parent then
+        part.Size = data.Size
+        part.Transparency = data.Transparency
+        part.Color = data.Color
+        part.Material = data.Material
+        part.CanCollide = data.CanCollide
+        part.Massless = data.Massless
+        part.CustomPhysicalProperties = data.Physics
+    end
+    originals[part] = nil
 end
 
-makeChip("Thân", 0, 0, "root")
-makeChip("Đầu", 0.5, 3, "head")
+local function restoreAll()
+    for part in pairs(originals) do
+        restore(part)
+    end
+end
 
-makeSlider("Kích thước thân", 2, 50, state.rootSize, 0, function(v)
+local function apply(part, value)
+    if not originals[part] then
+        originals[part] = {
+            Size = part.Size,
+            Transparency = part.Transparency,
+            Color = part.Color,
+            Material = part.Material,
+            CanCollide = part.CanCollide,
+            Massless = part.Massless,
+            Physics = part.CustomPhysicalProperties,
+        }
+        if part.Name == "Head" then
+            part.Massless = true
+            part.CustomPhysicalProperties = HEAD_PHYSICS
+        end
+    end
+    local size = Vector3.new(value, value, value)
+    if part.Size ~= size then
+        part.Size = size
+    end
+    if part.Transparency ~= state.transparency then
+        part.Transparency = state.transparency
+    end
+    if part.Color ~= state.color then
+        part.Color = state.color
+    end
+    if part.Material ~= Enum.Material.Neon then
+        part.Material = Enum.Material.Neon
+    end
+    if part.CanCollide then
+        part.CanCollide = false
+    end
+end
+
+local function setEnabled(value)
+    state.enabled = value
+    tween(dot, 0.2, { BackgroundColor3 = value and GREEN or OFF })
+    if not value then
+        restoreAll()
+        status.Text = "Đang tắt"
+        status.TextColor3 = MUTED
+    end
+end
+
+makeSwitch(hitPage, "Bật hitbox", 1, setEnabled)
+
+makeSlider(hitPage, 2, "Thân", 2, 50, state.rootSize, 0, function(v)
     state.rootSize = v
-end)
+end, "root")
 
-makeSlider("Kích thước đầu", 2, 30, state.headSize, 0, function(v)
+makeSlider(hitPage, 3, "Đầu", 2, 30, state.headSize, 0, function(v)
     state.headSize = v
-end)
+end, "head")
 
-makeSlider("Độ trong suốt", 0, 1, state.transparency, 1, function(v)
+makeSlider(hitPage, 4, "Độ trong suốt", 0, 1, state.transparency, 1, function(v)
     state.transparency = v
 end)
 
-local colorRow = panelRow(34)
+local colorRow = panelRow(hitPage, 32)
+colorRow.LayoutOrder = 5
 
 local palette = {
     Color3.fromRGB(255, 70, 70),
@@ -448,68 +591,28 @@ for i, color in ipairs(palette) do
     end)
 end
 
-local espBtn = panelRow(34, "TextButton")
-espBtn.Text = "ESP: Tắt"
-espBtn.TextColor3 = TEXT
-espBtn.TextSize = 12
-espBtn.Font = Enum.Font.GothamBold
-espBtn.AutoButtonColor = false
+local espInfo = make("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 30),
+    BackgroundTransparency = 1,
+    Text = "Thấy tất cả người chơi xuyên tường, tự tải lại mỗi " .. ESP_RELOAD .. " giây.",
+    TextColor3 = MUTED,
+    TextSize = 11,
+    Font = Enum.Font.Gotham,
+    TextWrapped = true,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+    LayoutOrder = 2,
+}, espPage)
 
-local status = make("TextLabel", {
+local espStatus = make("TextLabel", {
     Size = UDim2.new(1, 0, 0, 14),
     BackgroundTransparency = 1,
     Text = "Đang tắt",
     TextColor3 = MUTED,
     TextSize = 11,
     Font = Enum.Font.Gotham,
-    LayoutOrder = nextOrder(),
-}, body)
-
-local function restore(part)
-    local data = originals[part]
-    if data and part.Parent then
-        part.Size = data.Size
-        part.Transparency = data.Transparency
-        part.Color = data.Color
-        part.Material = data.Material
-        part.CanCollide = data.CanCollide
-    end
-    originals[part] = nil
-end
-
-local function restoreAll()
-    for part in pairs(originals) do
-        restore(part)
-    end
-end
-
-local function apply(part, value)
-    if not originals[part] then
-        originals[part] = {
-            Size = part.Size,
-            Transparency = part.Transparency,
-            Color = part.Color,
-            Material = part.Material,
-            CanCollide = part.CanCollide,
-        }
-    end
-    local size = Vector3.new(value, value, value)
-    if part.Size ~= size then
-        part.Size = size
-    end
-    if part.Transparency ~= state.transparency then
-        part.Transparency = state.transparency
-    end
-    if part.Color ~= state.color then
-        part.Color = state.color
-    end
-    if part.Material ~= Enum.Material.Neon then
-        part.Material = Enum.Material.Neon
-    end
-    if part.CanCollide then
-        part.CanCollide = false
-    end
-end
+    LayoutOrder = 3,
+}, espPage)
 
 local function clearEsp(player)
     local item = esp.items[player]
@@ -553,41 +656,18 @@ local function buildEsp(player, root)
     return { box = box, tag = tag, label = label, root = root }
 end
 
-local function stopEsp()
-    esp.active = false
-    clearAllEsp()
-    espBtn.Text = "ESP: Tắt"
-    tween(espBtn, 0.2, { BackgroundColor3 = PANEL })
-end
-
-local function startEsp()
-    esp.active = true
-    esp.nextReload = os.clock() + ESP_RELOAD
-    tween(espBtn, 0.2, { BackgroundColor3 = Color3.fromRGB(44, 100, 74) })
-end
-
-espBtn.MouseButton1Click:Connect(function()
-    if esp.active then
-        stopEsp()
+local function setEsp(value)
+    esp.active = value
+    if value then
+        esp.nextReload = os.clock() + ESP_RELOAD
     else
-        startEsp()
-    end
-end)
-
-local function setEnabled(value)
-    state.enabled = value
-    tween(track, 0.2, { BackgroundColor3 = value and ACCENT or OFF })
-    tween(knob, 0.2, { Position = value and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8) })
-    if not value then
-        restoreAll()
-        status.Text = "Đang tắt"
-        status.TextColor3 = MUTED
+        clearAllEsp()
+        espStatus.Text = "Đang tắt"
+        espStatus.TextColor3 = MUTED
     end
 end
 
-toggleRow.MouseButton1Click:Connect(function()
-    setEnabled(not state.enabled)
-end)
+makeSwitch(espPage, "Bật ESP", 1, setEsp)
 
 table.insert(connections, RunService.Heartbeat:Connect(function()
     if not state.enabled then
@@ -635,9 +715,9 @@ table.insert(connections, RunService.Heartbeat:Connect(function()
         esp.nextReload = os.clock() + ESP_RELOAD
         remaining = ESP_RELOAD
     end
-    espBtn.Text = "ESP: Bật • tải lại " .. math.ceil(remaining) .. "s"
     local myCharacter = LocalPlayer.Character
     local myRoot = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")
+    local count = 0
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             local character = player.Character
@@ -652,6 +732,7 @@ table.insert(connections, RunService.Heartbeat:Connect(function()
                 esp.items[player] = item
             end
             if item then
+                count = count + 1
                 local text = player.DisplayName
                 if myRoot then
                     text = text .. "\n" .. math.floor((root.Position - myRoot.Position).Magnitude) .. "m"
@@ -660,6 +741,8 @@ table.insert(connections, RunService.Heartbeat:Connect(function()
             end
         end
     end
+    espStatus.Text = "Đang bật • " .. count .. " người • tải lại " .. math.ceil(remaining) .. "s"
+    espStatus.TextColor3 = GREEN
 end))
 
 table.insert(connections, Players.PlayerRemoving:Connect(function(player)
@@ -716,6 +799,8 @@ end
 minBtn.MouseButton1Click:Connect(collapse)
 makeDraggable(header, main)
 makeDraggable(bubble, bubble, expand)
+
+selectTab("hit")
 
 pcall(function()
     local vu = game:GetService("VirtualUser")
