@@ -150,8 +150,7 @@ local main = make("Frame", {
     Name = "Main",
     Size = UDim2.new(0, MAIN_W, 0, 0),
     AutomaticSize = Enum.AutomaticSize.Y,
-    AnchorPoint = Vector2.new(0, 0.5),
-    Position = UDim2.new(0, 10, 0.5, 0),
+    Position = UDim2.new(0, 10, 0.2, 0),
     BackgroundColor3 = BG,
     BackgroundTransparency = 0.03,
     BorderSizePixel = 0,
@@ -159,14 +158,41 @@ local main = make("Frame", {
 }, gui)
 round(main, 14)
 make("UIStroke", { Color = ACCENT, Thickness = 1.2, Transparency = 0.5 }, main)
-make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, main)
+
+local bgImage = make("ImageLabel", {
+    Name = "Background",
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundTransparency = 1,
+    Image = imageSource,
+    ScaleType = Enum.ScaleType.Crop,
+    ZIndex = 0,
+}, main)
+round(bgImage, 14)
+
+local bgShade = make("Frame", {
+    Name = "Shade",
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundColor3 = BG,
+    BackgroundTransparency = 0.45,
+    BorderSizePixel = 0,
+    ZIndex = 0,
+}, main)
+round(bgShade, 14)
+
+local content = make("Frame", {
+    Size = UDim2.new(1, 0, 0, 0),
+    AutomaticSize = Enum.AutomaticSize.Y,
+    BackgroundTransparency = 1,
+}, main)
+make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, content)
 
 local header = make("Frame", {
     Size = UDim2.new(1, 0, 0, HEAD_H),
     BackgroundColor3 = ACCENT_DARK,
+    BackgroundTransparency = 0.3,
     BorderSizePixel = 0,
     LayoutOrder = 0,
-}, main)
+}, content)
 make("UIGradient", { Color = ColorSequence.new(ACCENT_DARK, PANEL) }, header)
 
 local avatar = make("ImageLabel", {
@@ -180,10 +206,10 @@ local avatar = make("ImageLabel", {
 round(avatar, 11)
 
 make("TextLabel", {
-    Size = UDim2.new(0, 60, 1, 0),
+    Size = UDim2.new(0, 92, 1, 0),
     Position = UDim2.new(0, 36, 0, 0),
     BackgroundTransparency = 1,
-    Text = "HITBOX",
+    Text = "Ken Đẹp Trai",
     TextColor3 = TEXT,
     TextSize = 13,
     Font = Enum.Font.GothamBold,
@@ -192,7 +218,7 @@ make("TextLabel", {
 
 local dot = make("Frame", {
     Size = UDim2.new(0, 8, 0, 8),
-    Position = UDim2.new(0, 96, 0.5, -4),
+    Position = UDim2.new(0, 132, 0.5, -4),
     BackgroundColor3 = OFF,
     BorderSizePixel = 0,
 }, header)
@@ -214,7 +240,6 @@ round(minBtn, 12)
 local bubble = make("ImageButton", {
     Name = "Bubble",
     Size = UDim2.new(0, 44, 0, 44),
-    AnchorPoint = Vector2.new(0, 0.5),
     Position = main.Position,
     BackgroundColor3 = ACCENT,
     BorderSizePixel = 0,
@@ -227,6 +252,7 @@ round(bubble, 22)
 make("UIStroke", { Color = ACCENT, Thickness = 2.5 }, bubble)
 
 if imageSource == "" then
+    buildPixelLogo(bgImage)
     buildPixelLogo(bubble)
     buildPixelLogo(avatar)
 end
@@ -235,12 +261,13 @@ local tabWrap = make("Frame", {
     Size = UDim2.new(1, 0, 0, 40),
     BackgroundTransparency = 1,
     LayoutOrder = 1,
-}, main)
+}, content)
 
 local seg = make("Frame", {
     Size = UDim2.new(1, -16, 0, 28),
     Position = UDim2.new(0, 8, 0, 8),
     BackgroundColor3 = PANEL,
+    BackgroundTransparency = 0.2,
     BorderSizePixel = 0,
 }, tabWrap)
 round(seg, 10)
@@ -250,11 +277,11 @@ local pageHolder = make("Frame", {
     AutomaticSize = Enum.AutomaticSize.Y,
     BackgroundTransparency = 1,
     LayoutOrder = 2,
-}, main)
+}, content)
 make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, pageHolder)
 make("UIPadding", {
     PaddingTop = UDim.new(0, 2),
-    PaddingBottom = UDim.new(0, 8),
+    PaddingBottom = UDim.new(0, 14),
     PaddingLeft = UDim.new(0, 8),
     PaddingRight = UDim.new(0, 8),
 }, pageHolder)
@@ -316,6 +343,7 @@ local function panelRow(parent, height, class)
     local row = make(class or "Frame", {
         Size = UDim2.new(1, 0, 0, height),
         BackgroundColor3 = PANEL,
+        BackgroundTransparency = 0.2,
         BorderSizePixel = 0,
     }, parent)
     round(row, 10)
@@ -749,6 +777,63 @@ table.insert(connections, Players.PlayerRemoving:Connect(function(player)
     clearEsp(player)
 end))
 
+local EDGE = 10
+local SIDE = 8
+
+local function makeEdge()
+    return make("Frame", {
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Active = true,
+    }, gui)
+end
+
+local edgeLeft = makeEdge()
+local edgeRight = makeEdge()
+local edgeBottom = makeEdge()
+
+local grip = make("Frame", {
+    Size = UDim2.new(0, 34, 0, 3),
+    Position = UDim2.new(0.5, -17, 0, 3),
+    BackgroundColor3 = MUTED,
+    BackgroundTransparency = 0.45,
+    BorderSizePixel = 0,
+}, edgeBottom)
+round(grip, 2)
+
+local function syncEdges()
+    local p = main.AbsolutePosition
+    local s = main.AbsoluteSize
+    local visible = main.Visible
+    edgeLeft.Visible = visible
+    edgeRight.Visible = visible
+    edgeBottom.Visible = visible
+    edgeLeft.Position = UDim2.fromOffset(p.X, p.Y + HEAD_H)
+    edgeLeft.Size = UDim2.fromOffset(SIDE, math.max(s.Y - HEAD_H - EDGE, 0))
+    edgeRight.Position = UDim2.fromOffset(p.X + s.X - SIDE, p.Y + HEAD_H)
+    edgeRight.Size = UDim2.fromOffset(SIDE, math.max(s.Y - HEAD_H - EDGE, 0))
+    edgeBottom.Position = UDim2.fromOffset(p.X, p.Y + s.Y - EDGE)
+    edgeBottom.Size = UDim2.fromOffset(s.X, EDGE)
+end
+
+local function clampedPosition(target, x, y)
+    local screen = gui.AbsoluteSize
+    local size = target.AbsoluteSize
+    return UDim2.fromOffset(
+        math.clamp(x, 0, math.max(screen.X - size.X, 0)),
+        math.clamp(y, 0, math.max(screen.Y - size.Y, 0))
+    )
+end
+
+local function keepInside(target)
+    local p = target.AbsolutePosition
+    local want = clampedPosition(target, p.X, p.Y)
+    if want.X.Offset ~= p.X or want.Y.Offset ~= p.Y then
+        target.Position = want
+    end
+end
+
 local function makeDraggable(handle, target, onTap)
     local dragging = false
     local moved = false
@@ -759,7 +844,7 @@ local function makeDraggable(handle, target, onTap)
             dragging = true
             moved = false
             dragStart = input.Position
-            startPos = target.Position
+            startPos = target.AbsolutePosition
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
@@ -778,29 +863,50 @@ local function makeDraggable(handle, target, onTap)
                 moved = true
             end
             if moved then
-                target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+                target.Position = clampedPosition(target, startPos.X + delta.X, startPos.Y + delta.Y)
             end
         end
     end))
 end
 
 local function collapse()
-    bubble.Position = main.Position
+    local p = main.AbsolutePosition
+    bubble.Position = clampedPosition(bubble, p.X, p.Y)
     main.Visible = false
     bubble.Visible = true
 end
 
 local function expand()
-    main.Position = bubble.Position
-    bubble.Visible = false
+    local p = bubble.AbsolutePosition
     main.Visible = true
+    bubble.Visible = false
+    main.Position = clampedPosition(main, p.X, p.Y)
 end
 
 minBtn.MouseButton1Click:Connect(collapse)
 makeDraggable(header, main)
+makeDraggable(edgeLeft, main)
+makeDraggable(edgeRight, main)
+makeDraggable(edgeBottom, main)
 makeDraggable(bubble, bubble, expand)
 
+table.insert(connections, main:GetPropertyChangedSignal("AbsolutePosition"):Connect(syncEdges))
+table.insert(connections, main:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+    keepInside(main)
+    syncEdges()
+end))
+table.insert(connections, main:GetPropertyChangedSignal("Visible"):Connect(syncEdges))
+table.insert(connections, gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+    keepInside(main)
+    keepInside(bubble)
+    syncEdges()
+end))
+
 selectTab("hit")
+task.defer(function()
+    keepInside(main)
+    syncEdges()
+end)
 
 pcall(function()
     local vu = game:GetService("VirtualUser")
@@ -816,5 +922,8 @@ env.HitboxMenuCleanup = function()
     end
     restoreAll()
     clearAllEsp()
+    edgeLeft:Destroy()
+    edgeRight:Destroy()
+    edgeBottom:Destroy()
     gui:Destroy()
 end
