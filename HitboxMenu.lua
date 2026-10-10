@@ -140,7 +140,7 @@ local wallbang = { enabled = false, hooked = false }
 
 local function enemyCharacters()
     local list = {}
-    for _, other in ipairs(Players:GetPlayers()) do
+    for _, other in ipairs(Players.GetPlayers(Players)) do
         if other ~= LocalPlayer and other.Character then
             table.insert(list, other.Character)
         end
@@ -150,15 +150,40 @@ end
 
 local function shouldPierce(origin, length)
     local camera = workspace.CurrentCamera
-    if not camera or length < 60 then
+    if not camera or length < 30 then
         return false
     end
-    if (origin - camera.CFrame.Position).Magnitude <= 15 then
+    if (origin - camera.CFrame.Position).Magnitude <= 30 then
         return true
     end
     local character = LocalPlayer.Character
-    local root = character and character:FindFirstChild("HumanoidRootPart")
-    return root ~= nil and (origin - root.Position).Magnitude <= 15
+    local root = character and character.FindFirstChild(character, "HumanoidRootPart")
+    return root ~= nil and (origin - root.Position).Magnitude <= 30
+end
+
+local function pierce(method, ...)
+    if method == "Raycast" then
+        local origin, direction = ...
+        if typeof(origin) == "Vector3" and typeof(direction) == "Vector3" and shouldPierce(origin, direction.Magnitude) then
+            local params = RaycastParams.new()
+            params.FilterType = Enum.RaycastFilterType.Include
+            params.FilterDescendantsInstances = enemyCharacters()
+            params.IgnoreWater = true
+            local result = workspace.Raycast(workspace, origin, direction, params)
+            if result then
+                return true, result
+            end
+        end
+    else
+        local ray = ...
+        if typeof(ray) == "Ray" and shouldPierce(ray.Origin, ray.Direction.Magnitude) then
+            local part, position, normal, material = workspace.FindPartOnRayWithWhitelist(workspace, ray, enemyCharacters())
+            if part then
+                return true, part, position, normal, material
+            end
+        end
+    end
+    return false
 end
 
 local function installWallbang()
@@ -171,22 +196,18 @@ local function installWallbang()
     local old
     local function handler(self, ...)
         local method = getnamecallmethod()
-        if wallbang.enabled and self == workspace and not (checkcaller and checkcaller()) then
-            if method == "Raycast" then
-                local origin, direction = ...
-                if typeof(origin) == "Vector3" and typeof(direction) == "Vector3" and shouldPierce(origin, direction.Magnitude) then
-                    local params = RaycastParams.new()
-                    params.FilterType = Enum.RaycastFilterType.Include
-                    params.FilterDescendantsInstances = enemyCharacters()
-                    params.IgnoreWater = true
-                    return old(self, origin, direction, params)
-                end
-            elseif method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" then
-                local ray = ...
-                if typeof(ray) == "Ray" and shouldPierce(ray.Origin, ray.Direction.Magnitude) then
-                    return workspace.FindPartOnRayWithWhitelist(workspace, ray, enemyCharacters())
-                end
+        if wallbang.enabled
+            and self == workspace
+            and (method == "Raycast" or method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist")
+            and not (checkcaller and checkcaller())
+        then
+            local ok, found, v1, v2, v3, v4 = pcall(pierce, method, ...)
+            if ok and found then
+                return v1, v2, v3, v4
             end
+        end
+        if setnamecallmethod then
+            setnamecallmethod(method)
         end
         return old(self, ...)
     end
