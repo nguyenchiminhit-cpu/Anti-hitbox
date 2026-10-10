@@ -8,6 +8,12 @@ local LocalPlayer = Players.LocalPlayer
 local IMAGE_FILE = "hitbox_logo.jpg"
 local IMAGE_ID = ""
 
+local env = (getgenv and getgenv()) or shared
+if env.HitboxMenuCleanup then
+    pcall(env.HitboxMenuCleanup)
+    env.HitboxMenuCleanup = nil
+end
+
 local old = (gethui and gethui() or CoreGui):FindFirstChild("HitboxMenuPro")
 if old then
     old:Destroy()
@@ -18,6 +24,15 @@ local state = {
     size = 10,
     transparency = 0.7,
     color = Color3.fromRGB(255, 70, 70),
+}
+
+local ESP_RELOAD = 10
+local ESP_COLOR = Color3.fromRGB(90, 220, 140)
+
+local esp = {
+    active = false,
+    nextReload = 0,
+    items = {},
 }
 
 local originals = setmetatable({}, { __mode = "k" })
@@ -100,7 +115,6 @@ local function buildPixelLogo(parent)
     end
 end
 
-
 local gui = make("ScreenGui", {
     Name = "HitboxMenuPro",
     ResetOnSpawn = false,
@@ -108,12 +122,14 @@ local gui = make("ScreenGui", {
     IgnoreGuiInset = true,
 })
 
-local ok = pcall(function()
+local parented = pcall(function()
     gui.Parent = gethui and gethui() or CoreGui
 end)
-if not ok or not gui.Parent then
+if not parented or not gui.Parent then
     gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
+
+local espFolder = make("Folder", { Name = "ESP" }, gui)
 
 local BG = Color3.fromRGB(18, 18, 24)
 local PANEL = Color3.fromRGB(28, 28, 38)
@@ -121,7 +137,7 @@ local ACCENT = Color3.fromRGB(110, 90, 255)
 local TEXT = Color3.fromRGB(240, 240, 250)
 local MUTED = Color3.fromRGB(150, 150, 170)
 
-local MAIN_W, MAIN_H, HEAD_H = 230, 244, 38
+local MAIN_W, MAIN_H, HEAD_H = 230, 292, 38
 
 local main = make("Frame", {
     Name = "Main",
@@ -235,7 +251,7 @@ round(knob, 10)
 
 local status = make("TextLabel", {
     Size = UDim2.new(1, -24, 0, 18),
-    Position = UDim2.new(0, 12, 1, -24),
+    Position = UDim2.new(0, 12, 1, -26),
     BackgroundTransparency = 1,
     Text = "Đang tắt",
     TextColor3 = MUTED,
@@ -383,6 +399,19 @@ for i, color in ipairs(palette) do
     end)
 end
 
+local espBtn = make("TextButton", {
+    Size = UDim2.new(1, -28, 0, 34),
+    Position = UDim2.new(0, 14, 0, 188),
+    BackgroundColor3 = PANEL,
+    Text = "ESP: Tắt",
+    TextColor3 = TEXT,
+    TextSize = 13,
+    Font = Enum.Font.GothamBold,
+    AutoButtonColor = false,
+}, body)
+round(espBtn, 10)
+local espStroke = make("UIStroke", { Color = ACCENT, Thickness = 1.5 }, espBtn)
+
 local function restore(part)
     local data = originals[part]
     if data and part.Parent then
@@ -391,7 +420,6 @@ local function restore(part)
         part.Color = data.Color
         part.Material = data.Material
         part.CanCollide = data.CanCollide
-        part.Massless = data.Massless
     end
     originals[part] = nil
 end
@@ -410,16 +438,88 @@ local function apply(part)
             Color = part.Color,
             Material = part.Material,
             CanCollide = part.CanCollide,
-            Massless = part.Massless,
         }
     end
-    part.Size = Vector3.new(state.size, state.size, state.size)
-    part.Transparency = state.transparency
-    part.Color = state.color
-    part.Material = Enum.Material.Neon
-    part.CanCollide = false
-    part.Massless = true
+    local size = Vector3.new(state.size, state.size, state.size)
+    if part.Size ~= size then
+        part.Size = size
+    end
+    if part.Transparency ~= state.transparency then
+        part.Transparency = state.transparency
+    end
+    if part.Color ~= state.color then
+        part.Color = state.color
+    end
+    if part.Material ~= Enum.Material.Neon then
+        part.Material = Enum.Material.Neon
+    end
+    if part.CanCollide then
+        part.CanCollide = false
+    end
 end
+
+local function clearEsp(player)
+    local item = esp.items[player]
+    if item then
+        item.box:Destroy()
+        item.tag:Destroy()
+        esp.items[player] = nil
+    end
+end
+
+local function clearAllEsp()
+    for player in pairs(esp.items) do
+        clearEsp(player)
+    end
+end
+
+local function buildEsp(player, root)
+    local box = make("BoxHandleAdornment", {
+        Adornee = root,
+        AlwaysOnTop = true,
+        ZIndex = 5,
+        Size = Vector3.new(4, 6, 2),
+        Transparency = 0.55,
+        Color3 = ESP_COLOR,
+    }, espFolder)
+    local tag = make("BillboardGui", {
+        Adornee = root,
+        AlwaysOnTop = true,
+        Size = UDim2.new(0, 130, 0, 34),
+        StudsOffset = Vector3.new(0, 4.5, 0),
+    }, espFolder)
+    local label = make("TextLabel", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        Text = player.DisplayName,
+        TextColor3 = Color3.new(1, 1, 1),
+        TextStrokeTransparency = 0.3,
+        TextSize = 12,
+        Font = Enum.Font.GothamBold,
+    }, tag)
+    return { box = box, tag = tag, label = label, root = root }
+end
+
+local function stopEsp()
+    esp.active = false
+    clearAllEsp()
+    espBtn.Text = "ESP: Tắt"
+    tween(espBtn, 0.2, { BackgroundColor3 = PANEL })
+end
+
+local function startEsp()
+    esp.active = true
+    esp.nextReload = os.clock() + ESP_RELOAD
+    tween(espBtn, 0.2, { BackgroundColor3 = Color3.fromRGB(50, 110, 80) })
+end
+
+espBtn.MouseButton1Click:Connect(function()
+    if esp.active then
+        stopEsp()
+    else
+        startEsp()
+    end
+end)
 
 local function setEnabled(value)
     state.enabled = value
@@ -445,24 +545,61 @@ table.insert(connections, RunService.Heartbeat:Connect(function()
     end
     local count = 0
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local root = player.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                apply(root)
-                count = count + 1
-            end
+        local character = player ~= LocalPlayer and player.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if root and humanoid and humanoid.Health > 0 then
+            apply(root)
+            count = count + 1
         end
     end
     status.Text = "Đang bật • " .. count .. " người chơi"
     status.TextColor3 = Color3.fromRGB(90, 220, 140)
 end))
 
-table.insert(connections, Players.PlayerRemoving:Connect(function(player)
-    if player.Character then
-        local root = player.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            originals[root] = nil
+table.insert(connections, RunService.Heartbeat:Connect(function()
+    if not esp.active then
+        return
+    end
+    local remaining = esp.nextReload - os.clock()
+    if remaining <= 0 then
+        clearAllEsp()
+        esp.nextReload = os.clock() + ESP_RELOAD
+        remaining = ESP_RELOAD
+    end
+    espBtn.Text = "ESP: Bật • tải lại " .. math.ceil(remaining) .. "s"
+    local myCharacter = LocalPlayer.Character
+    local myRoot = myCharacter and myCharacter:FindFirstChild("HumanoidRootPart")
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local character = player.Character
+            local root = character and character:FindFirstChild("HumanoidRootPart")
+            local item = esp.items[player]
+            if item and item.root ~= root then
+                clearEsp(player)
+                item = nil
+            end
+            if root and not item then
+                item = buildEsp(player, root)
+                esp.items[player] = item
+            end
+            if item then
+                local text = player.DisplayName
+                if myRoot then
+                    text = text .. "\n" .. math.floor((root.Position - myRoot.Position).Magnitude) .. "m"
+                end
+                item.label.Text = text
+            end
         end
+    end
+end))
+
+table.insert(connections, Players.PlayerRemoving:Connect(function(player)
+    clearEsp(player)
+    local character = player.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if root then
+        originals[root] = nil
     end
 end))
 
@@ -524,3 +661,12 @@ pcall(function()
         vu:ClickButton2(Vector2.new())
     end))
 end)
+
+env.HitboxMenuCleanup = function()
+    for _, c in ipairs(connections) do
+        c:Disconnect()
+    end
+    restoreAll()
+    clearAllEsp()
+    gui:Destroy()
+end
